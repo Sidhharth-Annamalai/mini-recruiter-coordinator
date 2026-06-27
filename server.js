@@ -99,16 +99,36 @@ app.post("/api/create-link", async (req, res) => {
   }
 });
 
-// 3. Chat with the candidate's agent (used by the "recruiter" view)
-app.post("/api/chat", async (req, res) => {
+// 3. Direct tool call — wired to the "Schedule interview" button.
+// Verified against the real schema from GET /api/tools (namespace: calendar):
+// schedule_meeting requires { title, startDateTime, endDateTime } in ISO 8601,
+// with optional { description, attendees[], timeZone }.
+// Note: the "calendar" namespace must be enabled first — see /api/enable-namespace/calendar.
+app.post("/api/schedule", async (req, res) => {
   try {
-    const { message, conversationId } = req.body;
-    const data = await aicooFetch("/chat", {
+    const { candidateName, datetime, durationMinutes, recruiterEmail } = req.body;
+
+    if (!datetime) {
+      return res.status(400).json({ error: "datetime is required" });
+    }
+
+    const start = new Date(datetime);
+    if (isNaN(start.getTime())) {
+      return res.status(400).json({ error: "datetime could not be parsed — expected an ISO-ish date string" });
+    }
+    const minutes = Number(durationMinutes) > 0 ? Number(durationMinutes) : 30;
+    const end = new Date(start.getTime() + minutes * 60000);
+
+    const data = await aicooFetch("/tools", {
       method: "POST",
       body: {
-        message,
-        conversationId,
-        stream: false,
+        tool: "schedule_meeting",
+        params: {
+          title: `Interview: ${candidateName}`,
+          startDateTime: start.toISOString(),
+          endDateTime: end.toISOString(),
+          attendees: recruiterEmail ? [recruiterEmail] : [],
+        },
       },
     });
     res.json(data);
@@ -117,20 +137,35 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-// 4. Direct tool call — used for the explicit "Schedule Interview" button
-app.post("/api/schedule", async (req, res) => {
+// Helper route: lists Aicoo's available tools and their parameter schemas.
+// Hit this in your browser at /api/tools-list (or curl it) to confirm the
+// exact fields schedule_meeting expects before trusting /api/schedule.
+app.get("/api/tools-list", async (req, res) => {
   try {
-    const { candidateName, datetime, recruiterEmail } = req.body;
-    const data = await aicooFetch("/tools", {
-      method: "POST",
-      body: {
-        tool: "schedule_meeting",
-        params: {
-          title: `Interview: ${candidateName}`,
-          time: datetime,
-          attendees: recruiterEmail ? [recruiterEmail] : [],
-        },
-      },
+    const data = await aicooFetch("/tools", { method: "GET" });
+    res.json(data);
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message, details: e.data });
+  }
+});
+
+// Helper route: view which tool namespaces are currently enabled.
+app.get("/api/namespaces", async (req, res) => {
+  try {
+    const data = await aicooFetch("/tools/namespaces", { method: "GET" });
+    res.json(data);
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message, details: e.data });
+  }
+});
+
+// Helper route: enable a namespace (e.g. "calendar") so its tools become callable.
+// Visit /api/enable-namespace/calendar in your browser to enable the calendar tools.
+app.post("/api/enable-namespace/:namespace", async (req, res) => {
+  try {
+    const data = await aicooFetch("/tools/namespaces", {
+      method: "PUT",
+      body: { enable: [req.params.namespace] },
     });
     res.json(data);
   } catch (e) {

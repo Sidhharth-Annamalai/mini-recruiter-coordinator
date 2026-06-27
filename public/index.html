@@ -241,6 +241,16 @@
   }
   .next-step-note strong { color: #4a3416; }
 
+  input[type="datetime-local"] {
+    color-scheme: dark;
+  }
+
+  .schedule-block {
+    margin-top: 22px;
+    padding-top: 22px;
+    border-top: 1px dashed var(--line);
+  }
+
   footer {
     margin-top: 48px;
     font-size: 12px;
@@ -263,7 +273,7 @@
   </div>
 
   <h1>Give your candidate<br/><em>an agent</em>, not a resume.</h1>
-  <p class="lede">Fill in a profile once. We spin up a live Aicoo agent that knows it, and hand you a link a recruiter can talk to directly! no signup walls, no PDF, no back-and-forth.</p>
+  <p class="lede">Fill in a profile once. We spin up a live Aicoo agent that knows it, and hand you a link a recruiter can talk to directly — no signup walls, no PDF, no back-and-forth.</p>
 
   <div class="rail">
     <div class="step active" id="rail-1"><span class="dot"></span>Profile</div>
@@ -298,7 +308,7 @@
     <h2>Your agent is live</h2>
     <p class="card-sub">Send this to a recruiter. They'll land on a real conversation with your agent — it only answers from what you entered above.</p>
 
-    <button class="btn full" id="btn-link">Generate share link</button>
+    <button class="btn full" id="btn-link" disabled>Generate share link</button>
     <div class="status-line" id="link-status"></div>
 
     <div class="result" id="link-result">
@@ -316,6 +326,17 @@
         <strong>Heads up:</strong> this link opens on Aicoo's own site, not here — that's by design.
         Recruiters talk to your agent on Aicoo's hosted page directly, so paste it into an email, a job board
         reply, or a text message rather than expecting it to load inside this app.
+      </div>
+
+      <div class="schedule-block">
+        <div class="result-label" style="margin-top:26px;">Already got a time? Lock it in</div>
+        <p class="card-sub" style="margin-bottom:14px;">This calls Aicoo's calendar tool directly and creates a real event, the same action your agent can take mid-conversation.</p>
+        <label style="margin-top:0;">Interview date &amp; time</label>
+        <input id="sched-time" type="datetime-local" />
+        <label>Recruiter's email <span style="font-weight:400;text-transform:none;">(gets the calendar invite)</span></label>
+        <input id="sched-email" type="email" placeholder="recruiter@company.com" />
+        <button class="btn full" id="btn-schedule" style="margin-top:16px;">Schedule interview</button>
+        <div class="status-line" id="sched-status"></div>
       </div>
     </div>
   </div>
@@ -349,6 +370,8 @@ document.getElementById('btn-setup').addEventListener('click', async () => {
   const skills = document.getElementById('c-skills').value.trim();
   const availability = document.getElementById('c-availability').value.trim();
   const statusEl = document.getElementById('setup-status');
+  const setupBtn = document.getElementById('btn-setup');
+  const linkBtn = document.getElementById('btn-link');
 
   if (!name || !role) {
     setStatus(statusEl, 'Add at least a name and target role.', 'err');
@@ -356,6 +379,7 @@ document.getElementById('btn-setup').addEventListener('click', async () => {
   }
   candidateName = name;
 
+  setupBtn.disabled = true;
   setStatus(statusEl, 'Creating your agent...', 'loading');
   try {
     const res = await fetch('/api/setup', {
@@ -367,15 +391,20 @@ document.getElementById('btn-setup').addEventListener('click', async () => {
     if (!res.ok) throw new Error(data.error || 'Setup failed');
     setStatus(statusEl, 'Agent created and profile loaded.', 'ok');
     activateRail(2);
+    linkBtn.disabled = false;
     document.getElementById('link-card').classList.add('show');
     document.getElementById('link-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   } catch (e) {
     setStatus(statusEl, 'Couldn\'t reach Aicoo: ' + e.message, 'err');
+  } finally {
+    setupBtn.disabled = false;
   }
 });
 
 document.getElementById('btn-link').addEventListener('click', async () => {
   const statusEl = document.getElementById('link-status');
+  const linkBtn = document.getElementById('btn-link');
+  linkBtn.disabled = true;
   setStatus(statusEl, 'Generating link...', 'loading');
   try {
     const res = await fetch('/api/create-link', {
@@ -395,6 +424,8 @@ document.getElementById('btn-link').addEventListener('click', async () => {
     activateRail(3);
   } catch (e) {
     setStatus(statusEl, 'Couldn\'t create link: ' + e.message, 'err');
+  } finally {
+    linkBtn.disabled = false;
   }
 });
 
@@ -408,6 +439,39 @@ document.getElementById('link-copy').addEventListener('click', async () => {
     setTimeout(() => { btn.textContent = original; }, 1500);
   } catch (e) {
     alert('Could not copy automatically — select and copy the link manually.');
+  }
+});
+
+document.getElementById('btn-schedule').addEventListener('click', async () => {
+  const statusEl = document.getElementById('sched-status');
+  const schedBtn = document.getElementById('btn-schedule');
+  const datetime = document.getElementById('sched-time').value;
+  const recruiterEmail = document.getElementById('sched-email').value.trim();
+
+  if (!datetime) {
+    setStatus(statusEl, 'Pick a date and time first.', 'err');
+    return;
+  }
+  if (!recruiterEmail) {
+    setStatus(statusEl, "Add the recruiter's email so they actually get the invite.", 'err');
+    return;
+  }
+
+  schedBtn.disabled = true;
+  setStatus(statusEl, 'Booking with Aicoo calendar tool...', 'loading');
+  try {
+    const res = await fetch('/api/schedule', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ candidateName: candidateName || 'Candidate', datetime, recruiterEmail })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Scheduling failed');
+    setStatus(statusEl, `Interview booked — calendar invite sent to ${recruiterEmail} ✓`, 'ok');
+  } catch (e) {
+    setStatus(statusEl, 'Couldn\'t schedule: ' + e.message, 'err');
+  } finally {
+    schedBtn.disabled = false;
   }
 });
 </script>
