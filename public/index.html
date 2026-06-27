@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Aicoo Recruiter Coordinator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f6f3ec;
+    --paper-raised: #fffdf8;
+    --ink: #1f1b16;
+    --ink-soft: #6b6258;
+    --line: #ddd5c6;
+    --moss: #3c5a47;
+    --moss-soft: #e3ead9;
+    --rust: #b5532f;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 56px 24px 80px;
+  }
+
+  .wrap { width: 100%; max-width: 620px; }
+
+  /* ---- Header / hero ---- */
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 18px;
+  }
+  .handoff-mark {
+    width: 28px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 40px;
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+    margin: 0 0 14px;
+  }
+  h1 em { font-style: italic; color: var(--moss); }
+  .lede {
+    font-size: 16px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    max-width: 480px;
+    margin: 0 0 40px;
+  }
+
+  /* ---- Steps rail ---- */
+  .rail {
+    display: flex;
+    gap: 18px;
+    margin-bottom: 36px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+  .rail .step { display: flex; align-items: center; gap: 7px; }
+  .rail .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--line);
+  }
+  .rail .step.active .dot { background: var(--moss); }
+  .rail .step.active { color: var(--ink); }
+  .rail .arrow { color: var(--line); }
+
+  /* ---- Form card ---- */
+  .card {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 32px;
+    box-shadow: 0 1px 2px rgba(31,27,22,0.04);
+  }
+  .card + .card { margin-top: 18px; }
+  .card h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 500;
+    margin: 0 0 4px;
+  }
+  .card .card-sub {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin: 0 0 22px;
+  }
+
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    margin: 18px 0 7px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  label:first-of-type { margin-top: 0; }
+  input, textarea {
+    width: 100%;
+    padding: 11px 13px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--ink);
+    font-size: 14.5px;
+    font-family: inherit;
+    transition: border-color 0.15s;
+  }
+  input:focus, textarea:focus {
+    outline: none;
+    border-color: var(--moss);
+  }
+  textarea { resize: vertical; min-height: 64px; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 26px;
+    padding: 12px 22px;
+    background: var(--moss);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn:hover { background: #314b3b; }
+  .btn:disabled { background: var(--line); color: var(--ink-soft); cursor: not-allowed; }
+  .btn.full { width: 100%; justify-content: center; }
+
+  .status-line {
+    margin-top: 16px;
+    font-size: 13px;
+    font-family: 'IBM Plex Mono', monospace;
+    display: none;
+    align-items: center;
+    gap: 8px;
+  }
+  .status-line.show { display: flex; }
+  .status-line.ok { color: var(--moss); }
+  .status-line.err { color: var(--rust); }
+  .status-line .spin {
+    width: 11px; height: 11px;
+    border: 2px solid var(--line);
+    border-top-color: var(--moss);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---- Result: the link, treated as an artifact ---- */
+  .result {
+    display: none;
+  }
+  .result.show { display: block; }
+  .result-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 10px;
+  }
+  .link-plate {
+    background: var(--moss-soft);
+    border: 1px solid #c9d9be;
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .link-plate .url {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    color: #243a2c;
+    word-break: break-all;
+    display: block;
+    margin-bottom: 14px;
+  }
+  .link-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .link-actions a, .link-actions button {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .link-actions .open {
+    background: var(--moss);
+    color: #fff;
+  }
+  .link-actions .open:hover { background: #314b3b; }
+  .link-actions .copy {
+    background: transparent;
+    border: 1px solid #b6c9a9;
+    color: #243a2c;
+  }
+  .link-actions .copy:hover { background: #d8e6ca; }
+
+  .expiry {
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  .next-step-note {
+    margin-top: 18px;
+    padding: 14px 16px;
+    background: #fdf6ec;
+    border: 1px solid #ecd9b8;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #6b4e26;
+  }
+  .next-step-note strong { color: #4a3416; }
+
+  footer {
+    margin-top: 48px;
+    font-size: 12px;
+    color: var(--ink-soft);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="eyebrow">
+    <svg class="handoff-mark" viewBox="0 0 28 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="4" cy="8" r="3.5" stroke="#3c5a47" stroke-width="1.4"/>
+      <circle cx="24" cy="8" r="3.5" stroke="#b5532f" stroke-width="1.4"/>
+      <path d="M7.5 8H20.5" stroke="#1f1b16" stroke-width="1.4" stroke-dasharray="2.2 2.2"/>
+    </svg>
+    Aicoo · agent handoff
+  </div>
+
+  <h1>Give your candidate<br/><em>an agent</em>, not a resume.</h1>
+  <p class="lede">Fill in a profile once. We spin up a live Aicoo agent that knows it, and hand you a link a recruiter can talk to directly! no signup walls, no PDF, no back-and-forth.</p>
+
+  <div class="rail">
+    <div class="step active" id="rail-1"><span class="dot"></span>Profile</div>
+    <span class="arrow">→</span>
+    <div class="step" id="rail-2"><span class="dot"></span>Agent live</div>
+    <span class="arrow">→</span>
+    <div class="step" id="rail-3"><span class="dot"></span>Link ready</div>
+  </div>
+
+  <div class="card">
+    <h2>Candidate profile</h2>
+    <p class="card-sub">This becomes the context your agent answers from.</p>
+
+    <label>Name</label>
+    <input id="c-name" placeholder="Jordan Lee" />
+
+    <label>Target role</label>
+    <input id="c-role" placeholder="Frontend Engineer" />
+
+    <label>Skills &amp; experience</label>
+    <textarea id="c-skills" placeholder="React, TypeScript, 3 years experience, shipped 2 production apps"></textarea>
+
+    <label>Interview availability</label>
+    <input id="c-availability" placeholder="Weekdays after 4pm IST, all day weekends" />
+
+    <button class="btn full" id="btn-setup">Create my agent</button>
+
+    <div class="status-line" id="setup-status"></div>
+  </div>
+
+  <div class="card result" id="link-card">
+    <h2>Your agent is live</h2>
+    <p class="card-sub">Send this to a recruiter. They'll land on a real conversation with your agent — it only answers from what you entered above.</p>
+
+    <button class="btn full" id="btn-link">Generate share link</button>
+    <div class="status-line" id="link-status"></div>
+
+    <div class="result" id="link-result">
+      <div class="result-label">Share link</div>
+      <div class="link-plate">
+        <span class="url" id="link-url"></span>
+        <div class="link-actions">
+          <a class="open" id="link-open" href="#" target="_blank">Open in new tab ↗</a>
+          <button class="copy" id="link-copy">Copy link</button>
+        </div>
+      </div>
+      <div class="expiry" id="link-expiry"></div>
+
+      <div class="next-step-note">
+        <strong>Heads up:</strong> this link opens on Aicoo's own site, not here — that's by design.
+        Recruiters talk to your agent on Aicoo's hosted page directly, so paste it into an email, a job board
+        reply, or a text message rather than expecting it to load inside this app.
+      </div>
+    </div>
+  </div>
+
+  <footer>Built on the Aicoo API for the AICOO Hackathon · agent profile, share link, and calendar handoff all run through Aicoo</footer>
+
+</div>
+
+<script>
+function setStatus(el, text, mode) {
+  el.className = 'status-line show ' + mode;
+  el.innerHTML = mode === 'loading'
+    ? `<span class="spin"></span>${text}`
+    : text;
+}
+function clearStatus(el) {
+  el.className = 'status-line';
+  el.innerHTML = '';
+}
+function activateRail(n) {
+  for (let i = 1; i <= 3; i++) {
+    document.getElementById('rail-' + i).classList.toggle('active', i <= n);
+  }
+}
+
+let candidateName = '';
+
+document.getElementById('btn-setup').addEventListener('click', async () => {
+  const name = document.getElementById('c-name').value.trim();
+  const role = document.getElementById('c-role').value.trim();
+  const skills = document.getElementById('c-skills').value.trim();
+  const availability = document.getElementById('c-availability').value.trim();
+  const statusEl = document.getElementById('setup-status');
+
+  if (!name || !role) {
+    setStatus(statusEl, 'Add at least a name and target role.', 'err');
+    return;
+  }
+  candidateName = name;
+
+  setStatus(statusEl, 'Creating your agent...', 'loading');
+  try {
+    const res = await fetch('/api/setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, role, skills, availability })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Setup failed');
+    setStatus(statusEl, 'Agent created and profile loaded.', 'ok');
+    activateRail(2);
+    document.getElementById('link-card').classList.add('show');
+    document.getElementById('link-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch (e) {
+    setStatus(statusEl, 'Couldn\'t reach Aicoo: ' + e.message, 'err');
+  }
+});
+
+document.getElementById('btn-link').addEventListener('click', async () => {
+  const statusEl = document.getElementById('link-status');
+  setStatus(statusEl, 'Generating link...', 'loading');
+  try {
+    const res = await fetch('/api/create-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label: `${candidateName} - recruiter access` })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not create link');
+    const link = data.shareLink;
+
+    clearStatus(statusEl);
+    document.getElementById('link-url').textContent = link.url;
+    document.getElementById('link-open').href = link.url;
+    document.getElementById('link-expiry').textContent = 'Expires ' + new Date(link.expiresAt).toLocaleString();
+    document.getElementById('link-result').classList.add('show');
+    activateRail(3);
+  } catch (e) {
+    setStatus(statusEl, 'Couldn\'t create link: ' + e.message, 'err');
+  }
+});
+
+document.getElementById('link-copy').addEventListener('click', async () => {
+  const url = document.getElementById('link-url').textContent;
+  try {
+    await navigator.clipboard.writeText(url);
+    const btn = document.getElementById('link-copy');
+    const original = btn.textContent;
+    btn.textContent = 'Copied ✓';
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  } catch (e) {
+    alert('Could not copy automatically — select and copy the link manually.');
+  }
+});
+</script>
+
+</body>
+</html>
